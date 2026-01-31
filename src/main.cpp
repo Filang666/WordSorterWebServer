@@ -5,23 +5,18 @@
 
 int main() {
     std::string words;
-    std::cin >> words;
-    char letter = ' ';
+    std::cout << "write ur words" << std::endl;
+    char letter;
     int newpos = 0;
     std::vector<std::string> wordslist = {};
-    for(int i = 0; i < sizeof(words); i++){
-        letter = words[i];
-        if(letter == ' '){
-            wordslist.push_back(words.substr(newpos, i));
-            newpos = i;
-        }
+    while (std::cin >> words) {
+        wordslist.push_back(words);
     }
-
-    std::sort(wordslist.begin(), wordslist.end());
-
-    for (const std::string& word : wordslist) {
-        std::cout << word << " ";
-    }
+   std::sort(wordslist.begin(), wordslist.end());
+   std::cout << "         " << std::endl;
+   for(int i = 0; i < wordslist.size(); i++){
+       std::cout << wordslist[i] << " ";
+   }
 
     return 0;
 }
