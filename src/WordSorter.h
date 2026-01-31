@@ -8,12 +8,12 @@
 
 class WordSorter {
 public:
-    void inputWords();
+    void inputWords(const std::string& input);
     void sortWords();
-    void displayWords() const;
+    std::string displayWords() const;
 
 private:
     std::vector<std::string> wordsList;
 };
 
-#endif
+#endif // WORDSORTER_H

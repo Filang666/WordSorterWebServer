@@ -1,9 +1,8 @@
-#include "sorter.h"
+#include "WebServer.h"
 
 int main() {
-    WordSorter wordSorter;
-    wordSorter.inputWords();
-    wordSorter.sortWords();
-    wordSorter.displayWords();
+    tcp::endpoint endpoint(tcp::v4(), 8080);
+    WebServer server(endpoint);
+    server.run();
     return 0;
 }
