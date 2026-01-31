@@ -31,7 +31,14 @@ http::response<http::string_body> Session::handle_request() {
         res.prepare_payload();
         return res;
     }
-    return http::response<http::string_body>{http::status::bad_request, req_.version()};
+
+    // For non-GET requests, return bad request
+    http::response<http::string_body> res{http::status::bad_request, req_.version()};
+    res.set(http::field::server, "Beast");
+    res.set(http::field::content_type, "text/html");
+    res.keep_alive(req_.keep_alive());
+    res.prepare_payload();
+    return res;
 }
 
 void Session::do_post() {
@@ -53,24 +60,36 @@ void Session::do_post() {
 
 void Session::do_read() {
     auto self(shared_from_this());
-    http::async_read(socket_, buffer_, req_, [this, self](beast::error_code ec, std::size_t) {
-        if (!ec) {
-            if (req_.method() == http::verb::post) {
-                do_post();  // Handle POST request
-            } else {
-                do_write(handle_request());  // Handle GET request
+    http::async_read(socket_, buffer_, req_,
+        [this, self](beast::error_code ec, std::size_t bytes_transferred) {
+            if (ec) {
+                // Connection closed or error
+                return;
             }
-        }
-    });
+
+            if (req_.method() == http::verb::post) {
+                do_post();
+            } else {
+                do_write(handle_request());
+            }
+        });
 }
 
 void Session::do_write(http::response<http::string_body> res) {
     auto self(shared_from_this());
-    http::async_write(socket_, res, [this, self](beast::error_code ec, std::size_t) {
-        socket_.shutdown(tcp::socket::shutdown_send, ec);
-    });
-}
 
+    // Keep the response alive until async_write completes
+    auto shared_res = std::make_shared<http::response<http::string_body>>(std::move(res));
+
+    http::async_write(socket_, *shared_res,
+        [this, self, shared_res](beast::error_code ec, std::size_t) {
+            if (!ec) {
+                // Gracefully close the connection
+                beast::error_code shutdown_ec;
+                socket_.shutdown(tcp::socket::shutdown_send, shutdown_ec);
+            }
+        });
+}
 Listener::Listener(net::io_context& ioc, tcp::endpoint endpoint)
     : ioc_(ioc), acceptor_(net::make_strand(ioc)) {
     beast::error_code ec;
