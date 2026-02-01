@@ -8,7 +8,7 @@ void WordSorter::inputWords(const std::string& input) {
     std::string inputCopy = input;
 
     // Split input based on spaces
-    while ((pos = inputCopy.find(' ')) != std::string::npos) {
+    while ((pos = inputCopy.find('+')) != std::string::npos) {
         word = inputCopy.substr(0, pos);
         if (!word.empty()) {
             wordsList.push_back(word);

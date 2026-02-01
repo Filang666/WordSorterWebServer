@@ -43,16 +43,28 @@ http::response<http::string_body> Session::handle_request() {
 
 void Session::do_post() {
     std::string input = req_.body();
-    wordSorter_.inputWords(input);
+    wordSorter_.inputWords(input.erase(0, 6));
     wordSorter_.sortWords();
 
     std::string sortedWords = wordSorter_.displayWords();
 
     http::response<http::string_body> res{http::status::ok, req_.version()};
+    std::string html = R"(
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Sorted Words: </title>
+    </head>
+    <body>
+        <h1>Sorted Words: </h1>
+        <p>)" + sortedWords + R"(</p>
+    </body>
+    </html>
+    )";
     res.set(http::field::server, "Beast");
-    res.set(http::field::content_type, "text/plain");
+    res.set(http::field::content_type, "text/html");
     res.keep_alive(req_.keep_alive());
-    res.body() = "Sorted Words: " + sortedWords;
+    res.body() = html;
     res.prepare_payload();
 
     do_write(std::move(res));
