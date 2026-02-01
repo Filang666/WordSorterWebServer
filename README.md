@@ -23,8 +23,8 @@ A simple HTTP server that accepts a list of words through a web interface, sorts
 ### Clone this repository:
 
   ```bash
-  git clone 
-  cd WordSorter
+  git clone https://github.com/Filang666/WordSorterWebServer.git
+  cd WordSorterWebServer
   ```
 
 ### Run CMake to configure the project:
