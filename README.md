@@ -12,10 +12,10 @@ A simple HTTP server that accepts a list of words through a web interface, sorts
 
 ## Installation
 
-### Installing Boost on Void Linux
+### Installing all required dependencies and CMake on Void Linux:
 
   ```bash
-  sudo xbps-install -y boost-devel
+  sudo xbps-install -S boost-devel cmake git ninja 
   ```
     
 ## Building the Project
