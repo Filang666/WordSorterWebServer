@@ -50,7 +50,7 @@ A simple HTTP server that accepts a list of words through a web interface, sorts
 ### Start the server:
 
   ```bash
-  ./WordSorterWebServer
+  ./build/WordSorterWebServer
   ```
 
 ### License
