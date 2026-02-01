@@ -6,24 +6,17 @@ A simple HTTP server that accepts a list of words through a web interface, sorts
 
 - C++17 or later
 - CMake (3.10 or higher)
-- Boost libraries (1.70.0 or later:
-  - `boost_system`
-  - `boost_filesystem`
+- Boost libraries (1.70.0 or later):
+  - boost_system
+  - boost_filesystem
 
 ## Installation
 
 ### Installing Boost on Void Linux
 
-1. Update package repository:
-  
   ```bash
-  sudo xbps-install -S
+  sudo xbps-install -y boost-devel
   ```
-  
-2. Install Boost development libraries:
-   ```bash
-   sudo xbps-install -y boost-devel
-   ```
     
 ## Building the Project
 
@@ -39,6 +32,7 @@ A simple HTTP server that accepts a list of words through a web interface, sorts
   ```bash
   cmake -Bbuild -GNinja
   ```
+  
 ### Compile the project:
 
   ```bash
