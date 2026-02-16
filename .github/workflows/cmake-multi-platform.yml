@@ -45,19 +45,34 @@ jobs:
         sudo apt update
         sudo apt install -y libboost-all-dev ninja-build
 
-    # Windows dependencies: Ninja via Chocolatey, Boost via vcpkg
+    # Windows: install Ninja
     - name: Install Ninja (Windows)
       if: runner.os == 'Windows'
       run: choco install ninja
 
+    # Windows: setup vcpkg manually
     - name: Setup vcpkg (Windows)
       if: runner.os == 'Windows'
-      uses: microsoft/vcpkg@v1
-      with:
-        # No manifest needed – we'll install Boost explicitly
-        run: vcpkg install boost --triplet x64-windows
+      shell: pwsh
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg install boost --triplet x64-windows
 
-    # vcpkg action sets VCPKG_INSTALLATION_ROOT; we'll use it for the toolchain
+    # Cache vcpkg and its installed packages for faster subsequent runs
+    - name: Cache vcpkg (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          vcpkg
+          !vcpkg/buildtrees
+          !vcpkg/packages
+          !vcpkg/downloads
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
     - name: Set reusable strings
       id: strings
       shell: bash
@@ -65,14 +80,13 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Configure CMake
-      # Use Ninja generator, specify compilers, build type, and (on Windows) the vcpkg toolchain
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        ${{ runner.os == 'Windows' && format('-DCMAKE_TOOLCHAIN_FILE={0}/scripts/buildsystems/vcpkg.cmake', env.VCPKG_INSTALLATION_ROOT) || '' }}
+        ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
         -S ${{ github.workspace }}
 
     - name: Build
