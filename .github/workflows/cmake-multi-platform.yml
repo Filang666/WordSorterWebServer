@@ -50,16 +50,7 @@ jobs:
       if: runner.os == 'Windows'
       run: choco install ninja
 
-    # Windows: setup vcpkg manually
-    - name: Setup vcpkg (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        git clone https://github.com/microsoft/vcpkg.git
-        .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg install boost --triplet x64-windows
-
-    # Cache vcpkg and its installed packages for faster subsequent runs
+    # Windows: setup vcpkg with caching
     - name: Cache vcpkg (Windows)
       if: runner.os == 'Windows'
       uses: actions/cache@v4
@@ -73,21 +64,44 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-vcpkg-
 
+    - name: Setup vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        if (!(Test-Path "vcpkg")) {
+          git clone https://github.com/microsoft/vcpkg.git
+          .\vcpkg\bootstrap-vcpkg.bat
+        }
+        .\vcpkg\vcpkg install boost --triplet x64-windows
+
     - name: Set reusable strings
       id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -G Ninja
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
-        -S ${{ github.workspace }}
+    # Configure step for Linux (no toolchain)
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+              -G Ninja \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -S ${{ github.workspace }}
+
+    # Configure step for Windows (with vcpkg toolchain)
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cmake -B ${{ steps.strings.outputs.build-output-dir }} \
+              -G Ninja \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" \
+              -S ${{ github.workspace }}
 
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
