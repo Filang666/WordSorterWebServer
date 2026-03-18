@@ -63,16 +63,25 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
+        # Use full URL in quotes to prevent git from misinterpreting the path
         if (!(Test-Path "vcpkg")) {
-          git clone --depth 1 https://github.com
+          git clone --depth 1 "https://github.com" vcpkg
         }
-        if (!(Test-Path "vcpkg\vcpkg.exe")) {
-          pushd vcpkg
-          .\bootstrap-vcpkg.bat
-          popd
-        }
-        .\vcpkg\vcpkg install boost --triplet x64-windows
         
+        # Double check if folder was created before entering
+        if (Test-Path "vcpkg") {
+          pushd vcpkg
+          if (!(Test-Path "vcpkg.exe")) {
+            .\bootstrap-vcpkg.bat
+          }
+          popd
+        } else {
+          Write-Error "Failed to clone vcpkg repository"
+          exit 1
+        }
+        
+        .\vcpkg\vcpkg install boost --triplet x64-windows
+
     # --- COMMON STEPS ---
     - name: Set reusable strings
       id: strings
@@ -80,7 +89,7 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    # Configure Step for Linux (Bash)
+    # Configure Step for Linux
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -91,7 +100,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -S ${{ github.workspace }}
 
-    # Configure Step for Windows (PowerShell)
+    # Configure Step for Windows
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
