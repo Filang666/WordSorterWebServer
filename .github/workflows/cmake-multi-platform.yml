@@ -69,9 +69,7 @@ jobs:
     # --- COMMON STEPS ---
     - name: Set reusable strings
       id: strings
-      
-
-shell: bash
+      shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
