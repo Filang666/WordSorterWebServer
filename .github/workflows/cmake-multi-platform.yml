@@ -27,21 +27,21 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # --- WINDOWS ONLY: SETUP MSVC ---
+    # --- WINDOWS ONLY: Активация компилятора CL (MSVC) ---
     - name: Set up MSVC Developer Command Prompt
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    # --- LINUX ONLY: DEPENDENCIES ---
+    # --- LINUX ONLY: Зависимости ---
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
         sudo apt update
         sudo apt install -y libboost-all-dev ninja-build
 
-    # --- WINDOWS ONLY: NINJA & VCPKG ---
+    # --- WINDOWS ONLY: Настройка Ninja и vcpkg ---
     - name: Install Ninja (Windows)
       if: runner.os == 'Windows'
       run: choco install ninja
@@ -65,18 +65,22 @@ jobs:
       run: |
         if (!(Test-Path "vcpkg")) {
           git clone https://github.com
-          ./vcpkg/bootstrap-vcpkg.bat
         }
-        ./vcpkg/vcpkg install boost --triplet x64-windows
+        if (!(Test-Path "vcpkg\vcpkg.exe")) {
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          cd ..
+        }
+        .\vcpkg\vcpkg install boost --triplet x64-windows
 
-    # --- COMMON STEPS ---
+    # --- ОБЩИЕ ШАГИ ---
     - name: Set reusable strings
       id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    # Configure Linux
+    # Конфигурация для Linux (Bash)
     - name: Configure CMake (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -87,7 +91,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -S ${{ github.workspace }}
 
-    # Configure Windows (Corrected paths and cl activation)
+    # Конфигурация для Windows (PowerShell)
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -98,9 +102,11 @@ jobs:
               -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
               -S ${{ github.workspace }}
 
+    # Сборка
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+    # Тесты
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: ctest --build-config ${{ matrix.build_type }}
