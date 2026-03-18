@@ -27,7 +27,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # --- WINDOWS ONLY: Activate MSVC (cl) compiler ---
+    # --- WINDOWS ONLY: Activate MSVC (cl.exe) ---
     - name: Set up MSVC Developer Command Prompt
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
@@ -41,51 +41,37 @@ jobs:
         sudo apt update
         sudo apt install -y libboost-all-dev ninja-build
 
-    # --- WINDOWS ONLY: Setup Ninja and vcpkg ---
+    # --- WINDOWS ONLY: Setup Ninja and Pre-installed vcpkg ---
     - name: Install Ninja (Windows)
       if: runner.os == 'Windows'
       run: choco install ninja
-
-    - name: Cache vcpkg (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/cache@v4
-      with:
-        path: |
-          vcpkg
-          !vcpkg/buildtrees
-          !vcpkg/packages
-          !vcpkg/downloads
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-
 
     - name: Setup vcpkg (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Use full URL in quotes to prevent git from misinterpreting the path
-        if (!(Test-Path "vcpkg")) {
-          git clone --depth 1 "https://github.com" vcpkg
-        }
+        # Use the vcpkg already installed on the runner
+        $vcpkg_root = $env:VCPKG_INSTALLATION_ROOT
         
-        # Double check if folder was created before entering
-        if (Test-Path "vcpkg") {
-          pushd vcpkg
-          if (!(Test-Path "vcpkg.exe")) {
+        # Ensure vcpkg is bootstrapped
+        if (!(Test-Path "$vcpkg_root\vcpkg.exe")) {
+            cd $vcpkg_root
             .\bootstrap-vcpkg.bat
-          }
-          popd
-        } else {
-          Write-Error "Failed to clone vcpkg repository"
-          exit 1
+            cd $env:GITHUB_WORKSPACE
         }
         
-        .\vcpkg\vcpkg install boost --triplet x64-windows
+        # Install Boost using the system vcpkg
+        & "$vcpkg_root\vcpkg.exe" install boost --triplet x64-windows
+        
+        # Export VCPKG_ROOT for the next steps
+        echo "VCPKG_ROOT=$vcpkg_root" >> $env:GITHUB_ENV
 
     # --- COMMON STEPS ---
     - name: Set reusable strings
       id: strings
-      shell: bash
+      
+
+shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
@@ -100,7 +86,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -S ${{ github.workspace }}
 
-    # Configure Step for Windows
+    # Configure Step for Windows (using the pre-installed vcpkg toolchain)
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -108,7 +94,7 @@ jobs:
         cmake -B ${{ steps.strings.outputs.build-output-dir }} `
               -G Ninja `
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
-              -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+              -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
               -S ${{ github.workspace }}
 
     # Build Step
